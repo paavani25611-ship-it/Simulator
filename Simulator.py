@@ -64,7 +64,7 @@ class CPU:
         self.memory = memory
         self.addr_to_line = addr_to_line
         self.regs = [0] * 32
-        self.regs[2] = 0x0000017C  # initialize sp = x2
+        self.regs[2] = 0x0000017C  # x2/sp initial value expected by tests
         self.pc = 0
         self.trace_lines = []
 
@@ -78,10 +78,9 @@ class CPU:
 
     def trace(self):
         self.regs[0] = 0
-        line = to_bin32(self.pc)
-        for r in self.regs:
-            line += " " + to_bin32(r)
-        self.trace_lines.append(line)
+        self.trace_lines.append(
+            " ".join([to_bin32(self.pc)] + [to_bin32(r) for r in self.regs])
+        )
 
     def run(self):
         while True:
@@ -136,7 +135,7 @@ class CPU:
                     f"Invalid R-type instruction at line {self.addr_to_line.get(current_pc, '?')}"
                 )
 
-            self.pc = current_pc + 4
+            self.pc = u32(current_pc + 4)
             return False
 
         # I-type: addi, sltiu, lw, jalr
@@ -157,7 +156,7 @@ class CPU:
                     raise ValueError(
                         f"Invalid I-type arithmetic instruction at line {self.addr_to_line.get(current_pc, '?')}"
                     )
-                self.pc = current_pc + 4
+                self.pc = u32(current_pc + 4)
                 return False
 
             elif opcode == 0b0000011:
@@ -168,7 +167,7 @@ class CPU:
                 address = s32(a) + imm
                 value = self.memory.lw(address)
                 self.write_reg(rd, value)
-                self.pc = current_pc + 4
+                self.pc = u32(current_pc + 4)
                 return False
 
             elif opcode == 0b1100111:
@@ -199,7 +198,7 @@ class CPU:
 
             address = s32(self.read_reg(rs1)) + imm
             self.memory.sw(address, self.read_reg(rs2))
-            self.pc = current_pc + 4
+            self.pc = u32(current_pc + 4)
             return False
 
         # B-type
@@ -237,10 +236,10 @@ class CPU:
 
             # Virtual halt: beq x0, x0, 0
             if funct3 == 0b000 and rs1 == 0 and rs2 == 0 and imm == 0:
-                self.pc = current_pc
+                self.pc = u32(current_pc)
                 return True
 
-            self.pc = current_pc + imm if take else current_pc + 4
+            self.pc = u32(current_pc + imm if take else current_pc + 4)
             return False
 
         # U-type
@@ -253,7 +252,7 @@ class CPU:
             else:                       # auipc
                 self.write_reg(rd, current_pc + imm)
 
-            self.pc = current_pc + 4
+            self.pc = u32(current_pc + 4)
             return False
 
         # J-type: jal
@@ -268,7 +267,7 @@ class CPU:
             imm = sign_extend(imm, 21)
 
             self.write_reg(rd, current_pc + 4)
-            self.pc = current_pc + imm
+            self.pc = u32(current_pc + imm)
             return False
 
         else:
@@ -303,31 +302,46 @@ def run_simulation_from_lines(lines):
     return cpu.trace_lines, memory.dump_data_memory_lines()
 
 
+def emit_output(trace_lines, memory_lines, output_file=None):
+    if output_file is None:
+        for line in trace_lines:
+            print(line)
+        for line in memory_lines:
+            print(line)
+    else:
+        with open(output_file, "w") as f:
+            for line in trace_lines:
+                f.write(line + "\n")
+            for line in memory_lines:
+                f.write(line + "\n")
+
+
+def write_error_output(message, output_file=None):
+    if output_file is None:
+        print(message)
+    else:
+        with open(output_file, "w") as f:
+            f.write(message + "\n")
+
+
 def main():
+    output_file = None
+
     try:
         # Mode 1: stdin -> stdout
         if len(sys.argv) == 1:
             lines = sys.stdin.readlines()
             trace_lines, memory_lines = run_simulation_from_lines(lines)
-
-            for line in trace_lines:
-                print(line)
-            for line in memory_lines:
-                print(line)
+            emit_output(trace_lines, memory_lines)
 
         # Mode 2: input file only -> stdout
         elif len(sys.argv) == 2:
             input_file = sys.argv[1]
-
             with open(input_file, "r") as f:
                 lines = f.readlines()
 
             trace_lines, memory_lines = run_simulation_from_lines(lines)
-
-            for line in trace_lines:
-                print(line)
-            for line in memory_lines:
-                print(line)
+            emit_output(trace_lines, memory_lines)
 
         # Mode 3: input file + output file
         elif len(sys.argv) == 3:
@@ -338,19 +352,14 @@ def main():
                 lines = f.readlines()
 
             trace_lines, memory_lines = run_simulation_from_lines(lines)
+            emit_output(trace_lines, memory_lines, output_file)
 
-            with open(output_file, "w") as f:
-                for line in trace_lines:
-                    f.write(line + "\n")
-                for line in memory_lines:
-                    f.write(line + "\n")
-
-        # Do not print anything extra in testing
         else:
+            # stay silent in testing
             pass
 
     except Exception as e:
-        print(str(e))
+        write_error_output(str(e), output_file)
 
 
 if __name__ == "__main__":
