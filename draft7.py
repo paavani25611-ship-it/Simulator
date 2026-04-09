@@ -91,8 +91,9 @@ class CPU:
 
     def trace(self):
         self.regs[0] = 0
-        line = " ".join([to_bin32(self.pc)] + [to_bin32(r) for r in self.regs])
-        self.trace_lines.append(line)
+        self.trace_lines.append(
+            " ".join([to_bin32(self.pc)] + [to_bin32(r) for r in self.regs])
+        )
 
     def run(self):
         while True:
@@ -106,7 +107,6 @@ class CPU:
     def execute(self, instr, current_pc):
         opcode = extract_bits(instr, 6, 0)
 
-        # R-type
         if opcode == 0b0110011:
             rd = extract_bits(instr, 11, 7)
             funct3 = extract_bits(instr, 14, 12)
@@ -118,23 +118,23 @@ class CPU:
             b = self.read_reg(rs2)
 
             if funct3 == 0b000 and funct7 == 0b0000000:
-                self.write_reg(rd, a + b)  # add
+                self.write_reg(rd, a + b)
             elif funct3 == 0b000 and funct7 == 0b0100000:
-                self.write_reg(rd, a - b)  # sub
+                self.write_reg(rd, a - b)
             elif funct3 == 0b001 and funct7 == 0b0000000:
-                self.write_reg(rd, a << (b & 0x1F))  # sll
+                self.write_reg(rd, a << (b & 0x1F))
             elif funct3 == 0b010 and funct7 == 0b0000000:
-                self.write_reg(rd, 1 if s32(a) < s32(b) else 0)  # slt
+                self.write_reg(rd, 1 if s32(a) < s32(b) else 0)
             elif funct3 == 0b011 and funct7 == 0b0000000:
-                self.write_reg(rd, 1 if u32(a) < u32(b) else 0)  # sltu
+                self.write_reg(rd, 1 if u32(a) < u32(b) else 0)
             elif funct3 == 0b100 and funct7 == 0b0000000:
-                self.write_reg(rd, a ^ b)  # xor
+                self.write_reg(rd, a ^ b)
             elif funct3 == 0b101 and funct7 == 0b0000000:
-                self.write_reg(rd, u32(a) >> (b & 0x1F))  # srl
+                self.write_reg(rd, u32(a) >> (b & 0x1F))
             elif funct3 == 0b110 and funct7 == 0b0000000:
-                self.write_reg(rd, a | b)  # or
+                self.write_reg(rd, a | b)
             elif funct3 == 0b111 and funct7 == 0b0000000:
-                self.write_reg(rd, a & b)  # and
+                self.write_reg(rd, a & b)
             else:
                 raise SimulationError(
                     f"Invalid R-type instruction at line {self.addr_to_line.get(current_pc, '?')}"
@@ -143,7 +143,6 @@ class CPU:
             self.pc = u32(current_pc + 4)
             return False
 
-        # I-type / load / jalr
         elif opcode in (0b0010011, 0b0000011, 0b1100111):
             rd = extract_bits(instr, 11, 7)
             funct3 = extract_bits(instr, 14, 12)
@@ -154,9 +153,9 @@ class CPU:
 
             if opcode == 0b0010011:
                 if funct3 == 0b000:
-                    self.write_reg(rd, a + imm)  # addi
+                    self.write_reg(rd, a + imm)
                 elif funct3 == 0b011:
-                    self.write_reg(rd, 1 if u32(a) < u32(imm) else 0)  # sltiu
+                    self.write_reg(rd, 1 if u32(a) < u32(imm) else 0)
                 else:
                     raise SimulationError(
                         f"Invalid I-type instruction at line {self.addr_to_line.get(current_pc, '?')}"
@@ -186,7 +185,6 @@ class CPU:
                 self.pc = target
                 return False
 
-        # S-type
         elif opcode == 0b0100011:
             funct3 = extract_bits(instr, 14, 12)
             rs1 = extract_bits(instr, 19, 15)
@@ -205,7 +203,6 @@ class CPU:
             self.pc = u32(current_pc + 4)
             return False
 
-        # B-type
         elif opcode == 0b1100011:
             funct3 = extract_bits(instr, 14, 12)
             rs1 = extract_bits(instr, 19, 15)
@@ -239,7 +236,6 @@ class CPU:
                     f"Invalid branch instruction at line {self.addr_to_line.get(current_pc, '?')}"
                 )
 
-            # virtual halt
             if funct3 == 0b000 and rs1 == 0 and rs2 == 0 and imm == 0:
                 self.pc = u32(current_pc)
                 return True
@@ -247,20 +243,18 @@ class CPU:
             self.pc = u32(current_pc + imm) if take else u32(current_pc + 4)
             return False
 
-        # U-type
         elif opcode in (0b0110111, 0b0010111):
             rd = extract_bits(instr, 11, 7)
             imm = extract_bits(instr, 31, 12) << 12
 
             if opcode == 0b0110111:
-                self.write_reg(rd, imm)  # lui
+                self.write_reg(rd, imm)
             else:
-                self.write_reg(rd, current_pc + imm)  # auipc
+                self.write_reg(rd, current_pc + imm)
 
             self.pc = u32(current_pc + 4)
             return False
 
-        # J-type
         elif opcode == 0b1101111:
             rd = extract_bits(instr, 11, 7)
             imm20 = extract_bits(instr, 31, 31)
@@ -303,21 +297,20 @@ def run_simulation_from_lines(lines):
 
     cpu = CPU(memory, addr_to_line)
     cpu.run()
-
     return cpu.trace_lines, memory.dump_data_memory_lines()
 
 
 def emit_output(trace_lines, memory_lines, output_file=None):
     lines = trace_lines + memory_lines
-    output_text = "\n".join(lines)
+    text = "\n".join(lines)
     if lines:
-        output_text += "\n"
+        text += "\n"
 
     if output_file is None:
-        sys.stdout.write(output_text)
+        sys.stdout.write(text)
     else:
         with open(output_file, "w", newline="\n") as f:
-            f.write(output_text)
+            f.write(text)
 
 
 def main():
@@ -328,19 +321,16 @@ def main():
             emit_output(trace_lines, memory_lines)
 
         elif len(sys.argv) == 2:
-            input_file = sys.argv[1]
-            with open(input_file, "r") as f:
+            with open(sys.argv[1], "r") as f:
                 lines = f.readlines()
             trace_lines, memory_lines = run_simulation_from_lines(lines)
             emit_output(trace_lines, memory_lines)
 
         elif len(sys.argv) == 3:
-            input_file = sys.argv[1]
-            output_file = sys.argv[2]
-            with open(input_file, "r") as f:
+            with open(sys.argv[1], "r") as f:
                 lines = f.readlines()
             trace_lines, memory_lines = run_simulation_from_lines(lines)
-            emit_output(trace_lines, memory_lines, output_file)
+            emit_output(trace_lines, memory_lines, sys.argv[2])
 
         else:
             raise SimulationError("Invalid command line usage")
@@ -349,8 +339,6 @@ def main():
         if len(sys.argv) == 3:
             with open(sys.argv[2], "w", newline="\n") as f:
                 f.write("")
-        else:
-            pass
 
 
 if __name__ == "__main__":
