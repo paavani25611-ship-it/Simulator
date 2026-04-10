@@ -297,3 +297,34 @@ class CPU:
             raise SimulationError(
                 f"Unknown opcode at line {self.addr_to_line.get(current_pc, '?')}"
             )
+
+
+def run_simulation_from_lines(lines):
+    instructions = []
+    addr_to_line = {}
+    addr = 0
+
+    for line_no, raw in enumerate(lines, start=1):
+        line = raw.strip()
+        if line == "":
+            continue
+
+        if len(line) != 32 or any(ch not in "01" for ch in line):
+            raise SimulationError(f"Invalid binary instruction at line {line_no}")
+
+        instructions.append(int(line, 2))
+        addr_to_line[addr] = line_no
+        addr += 4
+
+    memory = Memory()
+    memory.load_program(instructions)
+
+    cpu = CPU(memory, addr_to_line)
+
+    try:
+        cpu.run()
+        return cpu.trace_lines, memory.dump_data_memory_lines()
+    except SimulationError:
+        # important for hard_4:
+        # stop immediately and do not print memory dump
+        return cpu.trace_lines, []
