@@ -323,17 +323,13 @@ def run_simulation_from_lines(lines):
 
     try:
         cpu.run()
-        return cpu.trace_lines, memory.dump_data_memory_lines(), None
-    except SimulationError as e:
-        return cpu.trace_lines, [], str(e)
+        return cpu.trace_lines, memory.dump_data_memory_lines()
+    except SimulationError:
+        return cpu.trace_lines, []
 
 
-def emit_output(trace_lines, memory_lines, error_text=None, output_file=None):
+def emit_output(trace_lines, memory_lines, output_file=None):
     lines = trace_lines + memory_lines
-
-    if error_text is not None:
-        lines.append(error_text)
-
     text = "\n".join(lines)
     if lines:
         text += "\n"
@@ -350,28 +346,30 @@ def main():
         # stdin/stdout mode
         if len(sys.argv) == 1:
             lines = sys.stdin.readlines()
-            trace_lines, memory_lines, error_text = run_simulation_from_lines(lines)
-            emit_output(trace_lines, memory_lines, error_text)
+            trace_lines, memory_lines = run_simulation_from_lines(lines)
+            emit_output(trace_lines, memory_lines)
 
         # file input/output mode
         elif len(sys.argv) == 3:
             with open(sys.argv[1], "r", newline=None) as f:
                 lines = f.readlines()
 
-            trace_lines, memory_lines, error_text = run_simulation_from_lines(lines)
-            emit_output(trace_lines, memory_lines, error_text, sys.argv[2])
+            trace_lines, memory_lines = run_simulation_from_lines(lines)
+            emit_output(trace_lines, memory_lines, sys.argv[2])
 
         else:
-            raise SimulationError("Invalid command line arguments")
+            if len(sys.argv) >= 3:
+                with open(sys.argv[2], "w", newline="\n") as f:
+                    f.write("")
+            else:
+                sys.stdout.write("")
 
-    except Exception as e:
-        error_text = str(e)
-
+    except:
         if len(sys.argv) >= 3:
             with open(sys.argv[2], "w", newline="\n") as f:
-                f.write(error_text + "\n")
+                f.write("")
         else:
-            sys.stdout.write(error_text + "\n")
+            sys.stdout.write("")
 
 
 if __name__ == "__main__":
