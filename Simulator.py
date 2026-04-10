@@ -223,3 +223,44 @@ class CPU:
             self.memory.sw(address, self.read_reg(rs2))
             self.pc = u32(current_pc + 4)
             return False
+        
+        # B-type
+        elif opcode == 0b1100011:
+            funct3 = extract_bits(instr, 14, 12)
+            rs1 = extract_bits(instr, 19, 15)
+            rs2 = extract_bits(instr, 24, 20)
+
+            imm12 = extract_bits(instr, 31, 31)
+            imm10_5 = extract_bits(instr, 30, 25)
+            imm4_1 = extract_bits(instr, 11, 8)
+            imm11 = extract_bits(instr, 7, 7)
+
+            imm = (imm12 << 12) | (imm11 << 11) | (imm10_5 << 5) | (imm4_1 << 1)
+            imm = sign_extend(imm, 13)
+
+            a = self.read_reg(rs1)
+            b = self.read_reg(rs2)
+
+            if funct3 == 0b000:
+                take = (a == b)
+            elif funct3 == 0b001:
+                take = (a != b)
+            elif funct3 == 0b100:
+                take = (s32(a) < s32(b))
+            elif funct3 == 0b101:
+                take = (s32(a) >= s32(b))
+            elif funct3 == 0b110:
+                take = (u32(a) < u32(b))
+            elif funct3 == 0b111:
+                take = (u32(a) >= u32(b))
+            else:
+                raise SimulationError(
+                    f"Invalid branch instruction at line {self.addr_to_line.get(current_pc, '?')}"
+                )
+
+            if funct3 == 0b000 and rs1 == 0 and rs2 == 0 and imm == 0:
+                self.pc = u32(current_pc)
+                return True
+
+            self.pc = u32(current_pc + imm) if take else u32(current_pc + 4)
+            return False
