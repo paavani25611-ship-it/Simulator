@@ -72,3 +72,29 @@ class Memory:
             return self.stack.get(address, 0)
         return self.data.get(address, 0)
 
+    def sw(self, address, value):
+        address = u32(address)
+
+        if not self._is_valid_address(address):
+            raise SimulationError("Invalid memory access")
+
+        if STACK_BASE <= address <= STACK_END:
+            self.stack[address] = u32(value)
+        else:
+            self.data[address] = u32(value)
+
+    def dump_data_memory_lines(self):
+        lines = []
+        for addr in range(DATA_MEM_BASE, DATA_MEM_END + 1, 4):
+            lines.append(f"0x{addr:08X}:{to_bin32(self.data.get(addr, 0))}")
+        return lines
+
+
+class CPU:
+    def __init__(self, memory, addr_to_line):
+        self.memory = memory
+        self.addr_to_line = addr_to_line
+        self.regs = [0] * 32
+        self.regs[2] = 0x0000017C
+        self.pc = 0
+        self.trace_lines = []
