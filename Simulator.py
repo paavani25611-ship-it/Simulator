@@ -21,3 +21,24 @@ def u32(x):
 def s32(x):
     x &= MASK32
     return x if x < (1 << 31) else x - (1 << 32)
+
+
+def sign_extend(value, bits):
+    if value & (1 << (bits - 1)):
+        value -= (1 << bits)
+    return value
+
+
+def extract_bits(value, hi, lo):
+    return (value >> lo) & ((1 << (hi - lo + 1)) - 1)
+
+
+def to_bin32(x):
+    return "0b" + format(u32(x), "032b")
+
+
+class Memory:
+    def __init__(self):
+        self.instructions = []
+        self.data = {}
+        self.stack = {}
