@@ -42,3 +42,33 @@ class Memory:
         self.instructions = []
         self.data = {}
         self.stack = {}
+    
+    def load_program(self, instructions):
+        self.instructions = instructions[:]
+
+    def read_instr(self, pc):
+        if pc % 4 != 0:
+            raise SimulationError("Instruction fetch from unaligned PC")
+        index = pc // 4
+        if index < 0 or index >= len(self.instructions):
+            raise SimulationError("PC out of instruction memory range")
+        return self.instructions[index]
+
+    def _is_valid_address(self, address):
+        if address % 4 != 0:
+            return False
+
+        in_data = DATA_MEM_BASE <= address <= DATA_MEM_END
+        in_stack = STACK_BASE <= address <= STACK_END
+        return in_data or in_stack
+
+    def lw(self, address):
+        address = u32(address)
+
+        if not self._is_valid_address(address):
+            raise SimulationError("Invalid memory access")
+
+        if STACK_BASE <= address <= STACK_END:
+            return self.stack.get(address, 0)
+        return self.data.get(address, 0)
+
