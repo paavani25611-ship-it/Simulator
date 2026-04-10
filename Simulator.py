@@ -98,3 +98,26 @@ class CPU:
         self.regs[2] = 0x0000017C
         self.pc = 0
         self.trace_lines = []
+
+    def read_reg(self, idx):
+        return 0 if idx == 0 else self.regs[idx]
+
+    def write_reg(self, idx, value):
+        if idx != 0:
+            self.regs[idx] = u32(value)
+        self.regs[0] = 0
+
+    def trace(self):
+        self.regs[0] = 0
+        self.trace_lines.append(
+            " ".join([to_bin32(self.pc)] + [to_bin32(r) for r in self.regs]) + " "
+        )
+
+    def run(self):
+        while True:
+            current_pc = self.pc
+            instr = self.memory.read_instr(current_pc)
+            halted = self.execute(instr, current_pc)
+            self.trace()
+            if halted:
+                break
