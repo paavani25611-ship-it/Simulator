@@ -161,3 +161,46 @@ class CPU:
 
             self.pc = u32(current_pc + 4)
             return False
+        
+ # I-type
+        elif opcode in (0b0010011, 0b0000011, 0b1100111):
+            rd = extract_bits(instr, 11, 7)
+            funct3 = extract_bits(instr, 14, 12)
+            rs1 = extract_bits(instr, 19, 15)
+            imm = sign_extend(extract_bits(instr, 31, 20), 12)
+
+            a = self.read_reg(rs1)
+
+            if opcode == 0b0010011:
+                if funct3 == 0b000:
+                    self.write_reg(rd, a + imm)
+                elif funct3 == 0b011:
+                    self.write_reg(rd, 1 if u32(a) < u32(imm) else 0)
+                else:
+                    raise SimulationError(
+                        f"Invalid I-type instruction at line {self.addr_to_line.get(current_pc, '?')}"
+                    )
+                self.pc = u32(current_pc + 4)
+                return False
+
+            elif opcode == 0b0000011:
+                if funct3 != 0b010:
+                    raise SimulationError(
+                        f"Invalid load instruction at line {self.addr_to_line.get(current_pc, '?')}"
+                    )
+                address = u32(a + imm)
+                value = self.memory.lw(address)
+                self.write_reg(rd, value)
+                self.pc = u32(current_pc + 4)
+                return False
+
+            else:
+                if funct3 != 0b000:
+                    raise SimulationError(
+                        f"Invalid jalr instruction at line {self.addr_to_line.get(current_pc, '?')}"
+                    )
+                ret_addr = u32(current_pc + 4)
+                target = u32(a + imm) & ~1
+                self.write_reg(rd, ret_addr)
+                self.pc = target
+                return False
