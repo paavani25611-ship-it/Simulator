@@ -204,3 +204,22 @@ class CPU:
                 self.write_reg(rd, ret_addr)
                 self.pc = target
                 return False
+
+        # S-type
+        elif opcode == 0b0100011:
+            funct3 = extract_bits(instr, 14, 12)
+            rs1 = extract_bits(instr, 19, 15)
+            rs2 = extract_bits(instr, 24, 20)
+            imm11_5 = extract_bits(instr, 31, 25)
+            imm4_0 = extract_bits(instr, 11, 7)
+            imm = sign_extend((imm11_5 << 5) | imm4_0, 12)
+
+            if funct3 != 0b010:
+                raise SimulationError(
+                    f"Invalid store instruction at line {self.addr_to_line.get(current_pc, '?')}"
+                )
+
+            address = u32(self.read_reg(rs1) + imm)
+            self.memory.sw(address, self.read_reg(rs2))
+            self.pc = u32(current_pc + 4)
+            return False
