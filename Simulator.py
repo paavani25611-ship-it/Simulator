@@ -264,3 +264,36 @@ class CPU:
 
             self.pc = u32(current_pc + imm) if take else u32(current_pc + 4)
             return False
+
+        # U-type
+        elif opcode in (0b0110111, 0b0010111):
+            rd = extract_bits(instr, 11, 7)
+            imm = extract_bits(instr, 31, 12) << 12
+
+            if opcode == 0b0110111:
+                self.write_reg(rd, imm)
+            else:
+                self.write_reg(rd, current_pc + imm)
+
+            self.pc = u32(current_pc + 4)
+            return False
+
+        # J-type
+        elif opcode == 0b1101111:
+            rd = extract_bits(instr, 11, 7)
+            imm20 = extract_bits(instr, 31, 31)
+            imm10_1 = extract_bits(instr, 30, 21)
+            imm11 = extract_bits(instr, 20, 20)
+            imm19_12 = extract_bits(instr, 19, 12)
+
+            imm = (imm20 << 20) | (imm19_12 << 12) | (imm11 << 11) | (imm10_1 << 1)
+            imm = sign_extend(imm, 21)
+
+            self.write_reg(rd, current_pc + 4)
+            self.pc = u32(current_pc + imm)
+            return False
+
+        else:
+            raise SimulationError(
+                f"Unknown opcode at line {self.addr_to_line.get(current_pc, '?')}"
+            )
