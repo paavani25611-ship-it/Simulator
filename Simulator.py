@@ -298,7 +298,6 @@ class CPU:
                 f"Unknown opcode at line {self.addr_to_line.get(current_pc, '?')}"
             )
 
-
 def run_simulation_from_lines(lines):
     instructions = []
     addr_to_line = {}
@@ -325,6 +324,33 @@ def run_simulation_from_lines(lines):
         cpu.run()
         return cpu.trace_lines, memory.dump_data_memory_lines()
     except SimulationError:
-        # important for hard_4:
-        # stop immediately and do not print memory dump
         return cpu.trace_lines, []
+
+def emit_output(trace_lines, memory_lines, output_file=None):
+    lines = trace_lines + memory_lines
+    text = "\n".join(lines)
+    if lines:
+        text += "\n"
+
+    if output_file is None:
+        sys.stdout.write(text)
+    else:
+        with open(output_file, "w", newline="\n") as f:
+            f.write(text)
+
+
+def main():
+    try:
+        with open(sys.argv[1], "r") as f:
+            lines = f.readlines()
+
+        trace_lines, memory_lines = run_simulation_from_lines(lines)
+        emit_output(trace_lines, memory_lines, sys.argv[2])
+
+    except:
+        with open(sys.argv[2], "w", newline="\n") as f:
+            f.write("")
+
+
+if __name__ == "__main__":
+    main()
