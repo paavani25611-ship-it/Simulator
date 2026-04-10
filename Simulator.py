@@ -121,3 +121,43 @@ class CPU:
             self.trace()
             if halted:
                 break
+            
+    def execute(self, instr, current_pc):
+        opcode = extract_bits(instr, 6, 0)
+
+        # R-type
+        if opcode == 0b0110011:
+            rd = extract_bits(instr, 11, 7)
+            funct3 = extract_bits(instr, 14, 12)
+            rs1 = extract_bits(instr, 19, 15)
+            rs2 = extract_bits(instr, 24, 20)
+            funct7 = extract_bits(instr, 31, 25)
+
+            a = self.read_reg(rs1)
+            b = self.read_reg(rs2)
+
+            if funct3 == 0b000 and funct7 == 0b0000000:
+                self.write_reg(rd, a + b)
+            elif funct3 == 0b000 and funct7 == 0b0100000:
+                self.write_reg(rd, a - b)
+            elif funct3 == 0b001 and funct7 == 0b0000000:
+                self.write_reg(rd, a << (b & 0x1F))
+            elif funct3 == 0b010 and funct7 == 0b0000000:
+                self.write_reg(rd, 1 if s32(a) < s32(b) else 0)
+            elif funct3 == 0b011 and funct7 == 0b0000000:
+                self.write_reg(rd, 1 if u32(a) < u32(b) else 0)
+            elif funct3 == 0b100 and funct7 == 0b0000000:
+                self.write_reg(rd, a ^ b)
+            elif funct3 == 0b101 and funct7 == 0b0000000:
+                self.write_reg(rd, u32(a) >> (b & 0x1F))
+            elif funct3 == 0b110 and funct7 == 0b0000000:
+                self.write_reg(rd, a | b)
+            elif funct3 == 0b111 and funct7 == 0b0000000:
+                self.write_reg(rd, a & b)
+            else:
+                raise SimulationError(
+                    f"Invalid R-type instruction at line {self.addr_to_line.get(current_pc, '?')}"
+                )
+
+            self.pc = u32(current_pc + 4)
+            return False
